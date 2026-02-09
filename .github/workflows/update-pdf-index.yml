@@ -1,0 +1,31 @@
+name: PDF → MD (одноимённые файлы)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  pdf-to-md:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pdftotext
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Generate .md from each PDF (same name, extracted text)
+        run: |
+          while IFS= read -r -d '' pdf; do
+            dir=$(dirname "$pdf")
+            base=$(basename "$pdf" .pdf)
+            md="${dir}/${base}.md"
+            pdftotext "$pdf" "$md" || true
+          done < <(find . -type f -name "*.pdf" ! -path "./.git/*" -print0)
+
+      - name: Commit and push .md files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Автообновление MD из PDF (одноимённые файлы)"
+          file_pattern: "*.md"
